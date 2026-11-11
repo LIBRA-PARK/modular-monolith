@@ -1,4 +1,4 @@
-package com.example.monolith.role.internal;
+package com.example.monolith.role.internal.roles;
 
 import java.util.List;
 import java.util.Set;

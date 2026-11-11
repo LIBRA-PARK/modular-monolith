@@ -1,4 +1,4 @@
-package com.example.monolith.user.internal;
+package com.example.monolith.user.internal.roleview;
 
 import java.util.HashSet;
 import java.util.Set;

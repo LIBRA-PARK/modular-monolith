@@ -1,4 +1,4 @@
-package com.example.monolith.role.internal;
+package com.example.monolith.role.internal.permissionview;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;

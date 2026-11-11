@@ -5,10 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 
 import java.util.Set;
 
-import com.example.monolith.role.RoleCreated;
-import com.example.monolith.role.RolePermissionsChanged;
-import com.example.monolith.user.internal.RoleSnapshotRepository;
-import com.example.monolith.user.internal.UserService;
+import com.example.monolith.role.events.RoleCreated;
+import com.example.monolith.role.events.RolePermissionsChanged;
+import com.example.monolith.user.events.UserCreated;
+import com.example.monolith.user.internal.roleview.RoleSnapshots;
+import com.example.monolith.user.internal.users.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.modulith.test.ApplicationModuleTest;
@@ -24,13 +25,13 @@ class UserModuleTests {
 	UserService users;
 
 	@Autowired
-	RoleSnapshotRepository roleSnapshots;
+	RoleSnapshots roleSnapshots;
 
 	@Test
 	void createsUserWithExistingRoleAndResolvesPermissionsThroughRole(Scenario scenario) {
 		scenario.publish(new RoleCreated("MANAGER", Set.of("user:read", "user:write")))
-				.andWaitForStateChange(() -> roleSnapshots.findById("MANAGER"))
-				.andVerify(snapshot -> assertThat(snapshot).isPresent());
+				.andWaitForStateChange(() -> roleSnapshots.contains("MANAGER"), Boolean::booleanValue)
+				.andVerify(exists -> assertThat(exists).isTrue());
 
 		users.create("alice", Set.of("MANAGER"));
 
@@ -46,7 +47,7 @@ class UserModuleTests {
 
 	@Test
 	void publishesUserCreated(Scenario scenario) {
-		users.syncRole("STAFF", Set.of("board:read"));
+		roleSnapshots.sync("STAFF", Set.of("board:read"));
 
 		scenario.stimulate(() -> users.create("carol", Set.of("STAFF")))
 				.andWaitForEventOfType(UserCreated.class)
@@ -56,7 +57,7 @@ class UserModuleTests {
 
 	@Test
 	void reflectsRolePermissionChangesInEffectivePermissions(Scenario scenario) {
-		users.syncRole("EDITOR", Set.of("post:read"));
+		roleSnapshots.sync("EDITOR", Set.of("post:read"));
 		users.create("dave", Set.of("EDITOR"));
 
 		scenario.publish(new RolePermissionsChanged("EDITOR", Set.of("post:read", "post:write")))

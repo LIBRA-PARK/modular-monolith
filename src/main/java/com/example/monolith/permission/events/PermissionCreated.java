@@ -1,4 +1,4 @@
-package com.example.monolith.permission;
+package com.example.monolith.permission.events;
 
 /**
  * 권한이 생성되었음을 알리는 이벤트.

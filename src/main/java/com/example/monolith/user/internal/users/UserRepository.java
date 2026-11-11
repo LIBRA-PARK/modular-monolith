@@ -1,4 +1,4 @@
-package com.example.monolith.user.internal;
+package com.example.monolith.user.internal.users;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

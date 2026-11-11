@@ -1,4 +1,4 @@
-package com.example.monolith.role;
+package com.example.monolith.role.events;
 
 import java.util.Set;
 

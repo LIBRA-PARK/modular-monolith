@@ -1,4 +1,4 @@
-package com.example.monolith.user;
+package com.example.monolith.user.events;
 
 import java.util.Set;
 

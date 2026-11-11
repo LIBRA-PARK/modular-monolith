@@ -1,10 +1,10 @@
-package com.example.monolith.user.internal;
+package com.example.monolith.user.internal.users;
 
 import java.util.List;
 import java.util.Set;
-import java.util.TreeSet;
 
-import com.example.monolith.user.UserCreated;
+import com.example.monolith.user.events.UserCreated;
+import com.example.monolith.user.internal.roleview.RoleSnapshots;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,12 +15,11 @@ public class UserService {
 
 	private final UserRepository users;
 
-	private final RoleSnapshotRepository roleSnapshots;
+	private final RoleSnapshots roleSnapshots;
 
 	private final ApplicationEventPublisher events;
 
-	public UserService(UserRepository users, RoleSnapshotRepository roleSnapshots,
-			ApplicationEventPublisher events) {
+	public UserService(UserRepository users, RoleSnapshots roleSnapshots, ApplicationEventPublisher events) {
 		this.users = users;
 		this.roleSnapshots = roleSnapshots;
 		this.events = events;
@@ -33,7 +32,7 @@ public class UserService {
 		if (users.existsById(username)) {
 			throw new IllegalArgumentException("이미 존재하는 사용자입니다: " + username);
 		}
-		requireKnownRoles(roleNames);
+		roleSnapshots.requireAll(roleNames);
 		var user = users.save(new User(username, roleNames));
 		events.publishEvent(new UserCreated(username, user.getRoleNames()));
 		return user;
@@ -41,7 +40,7 @@ public class UserService {
 
 	public User assignRoles(String username, Set<String> roleNames) {
 		var user = getUser(username);
-		requireKnownRoles(roleNames);
+		roleSnapshots.requireAll(roleNames);
 		user.assign(roleNames);
 		return user;
 	}
@@ -51,10 +50,7 @@ public class UserService {
 	 */
 	@Transactional(readOnly = true)
 	public Set<String> findEffectivePermissions(String username) {
-		var permissions = new TreeSet<String>();
-		roleSnapshots.findAllById(getUser(username).getRoleNames())
-				.forEach(snapshot -> permissions.addAll(snapshot.getPermissionCodes()));
-		return permissions;
+		return roleSnapshots.permissionsOf(getUser(username).getRoleNames());
 	}
 
 	@Transactional(readOnly = true)
@@ -67,23 +63,9 @@ public class UserService {
 		return users.findAll();
 	}
 
-	public void syncRole(String roleName, Set<String> permissionCodes) {
-		roleSnapshots.findById(roleName).ifPresentOrElse(
-				snapshot -> snapshot.replacePermissions(permissionCodes),
-				() -> roleSnapshots.save(new RoleSnapshot(roleName, permissionCodes)));
-	}
-
 	private User getUser(String username) {
 		return users.findById(username)
 				.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다: " + username));
-	}
-
-	private void requireKnownRoles(Set<String> roleNames) {
-		var unknown = new TreeSet<>(roleNames);
-		roleSnapshots.findAllById(roleNames).forEach(snapshot -> unknown.remove(snapshot.getRoleName()));
-		if (!unknown.isEmpty()) {
-			throw new IllegalArgumentException("존재하지 않는 역할입니다: " + unknown);
-		}
 	}
 
 }

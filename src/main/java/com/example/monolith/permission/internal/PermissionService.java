@@ -2,8 +2,8 @@ package com.example.monolith.permission.internal;
 
 import java.util.List;
 
-import com.example.monolith.permission.PermissionCreated;
-import com.example.monolith.permission.PermissionDeleted;
+import com.example.monolith.permission.events.PermissionCreated;
+import com.example.monolith.permission.events.PermissionDeleted;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

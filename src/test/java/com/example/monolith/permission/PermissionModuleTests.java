@@ -1,5 +1,7 @@
 package com.example.monolith.permission;
 
+import com.example.monolith.permission.events.PermissionCreated;
+import com.example.monolith.permission.events.PermissionDeleted;
 import com.example.monolith.permission.internal.PermissionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

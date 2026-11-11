@@ -5,10 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 
 import java.util.Set;
 
-import com.example.monolith.permission.PermissionCreated;
-import com.example.monolith.permission.PermissionDeleted;
-import com.example.monolith.role.internal.KnownPermissionRepository;
-import com.example.monolith.role.internal.RoleService;
+import com.example.monolith.permission.events.PermissionCreated;
+import com.example.monolith.permission.events.PermissionDeleted;
+import com.example.monolith.role.events.RoleCreated;
+import com.example.monolith.role.events.RolePermissionsChanged;
+import com.example.monolith.role.internal.permissionview.KnownPermissions;
+import com.example.monolith.role.internal.roles.RoleService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.modulith.test.ApplicationModuleTest;
@@ -24,18 +26,18 @@ class RoleModuleTests {
 	RoleService roles;
 
 	@Autowired
-	KnownPermissionRepository knownPermissions;
+	KnownPermissions knownPermissions;
 
 	@Test
 	void consumesPermissionCreatedIntoLocalReplica(Scenario scenario) {
 		scenario.publish(new PermissionCreated("order:read", "주문 조회"))
-				.andWaitForStateChange(() -> knownPermissions.existsById("order:read"), Boolean::booleanValue)
+				.andWaitForStateChange(() -> knownPermissions.contains("order:read"), Boolean::booleanValue)
 				.andVerify(exists -> assertThat(exists).isTrue());
 	}
 
 	@Test
 	void createsRoleOnlyWithKnownPermissions(Scenario scenario) {
-		roles.registerKnownPermission("report:read");
+		knownPermissions.register("report:read");
 
 		scenario.stimulate(() -> roles.create("VIEWER", Set.of("report:read")))
 				.andWaitForEventOfType(RoleCreated.class)
@@ -49,8 +51,8 @@ class RoleModuleTests {
 
 	@Test
 	void revokesDeletedPermissionFromRoles(Scenario scenario) {
-		roles.registerKnownPermission("audit:read");
-		roles.registerKnownPermission("audit:write");
+		knownPermissions.register("audit:read");
+		knownPermissions.register("audit:write");
 		roles.create("AUDITOR", Set.of("audit:read", "audit:write"));
 
 		scenario.publish(new PermissionDeleted("audit:write"))
