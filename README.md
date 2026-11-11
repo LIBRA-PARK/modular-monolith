@@ -9,13 +9,15 @@ Spring Boot와 Spring Modulith 기반 프로젝트입니다. Gradle Toolchain이
 
 ### 업무 모듈: Permission ← Role ← User
 
-| 모듈 | 허용 의존 | 발행 이벤트 | 소비 이벤트 | 로컬 읽기 모델 |
+| 모듈 | 허용 의존 | 공개 이벤트 (`events`) | 소비 이벤트 | 내부 기능 패키지 |
 |---|---|---|---|---|
-| `permission` | 없음 | `PermissionCreated`, `PermissionDeleted` | - | - |
-| `role` | `permission` | `RoleCreated`, `RolePermissionsChanged` | 권한 이벤트 | `role_known_permissions` |
-| `user` | `role` | `UserCreated` | 역할 이벤트 | `user_role_snapshots` |
+| `permission` | 없음 | `PermissionCreated`, `PermissionDeleted` | - | `internal` |
+| `role` | `permission :: events` | `RoleCreated`, `RolePermissionsChanged` | 권한 이벤트 | `internal.roles`, `internal.permissionview` |
+| `user` | `role :: events` | `UserCreated` | 역할 이벤트 | `internal.users`, `internal.roleview` |
 
-- 모듈 간에는 서로의 빈을 호출하지 않고, 각 모듈 기본 패키지에 공개한 **이벤트 타입만** 참조합니다.
+- 모듈 간에는 서로의 빈을 호출하지 않고, 각 모듈이 `events` named interface로 공개한 **이벤트 타입만** 참조합니다.
+- `internal` 아래는 기능 단위로 나누며, 하위 패키지 간 의존은 단방향(`roles → permissionview`, `users → roleview`)으로 유지합니다.
+  구조와 근거는 [모듈 내부 패키지 구조 리팩터링](docs/package-structure-refactoring.md)을 참고하세요.
 - `@ApplicationModuleListener`(커밋 후 비동기, 별도 트랜잭션)로 이벤트를 소비해 로컬 읽기 모델을 갱신합니다.
   발행 내역은 Event Publication Registry(JPA)에 기록됩니다.
 - 사용자 생성 시 지정한 역할은 `user` 모듈의 역할 스냅샷으로 검증하고, 유효 권한도 스냅샷으로 계산합니다.
@@ -30,8 +32,10 @@ curl -H 'Content-Type: application/json' -d '{"username":"alice","roleNames":["A
 curl localhost:8080/api/users/alice   # effectivePermissions: ["user:read"]
 ```
 
+앱 실행 후 브라우저에서 `http://localhost:8080`을 열면 버튼으로 같은 흐름을 확인할 수 있는 데모 페이지가 열립니다.
+
 - `com.example.monolith` 바로 아래의 하위 패키지를 업무 모듈로 인식합니다.
-- 모듈 기본 패키지에는 외부에 공개할 API를, 그 아래 하위 패키지에는 내부 구현을 둡니다.
+- 모듈 기본 패키지와 `@NamedInterface`를 선언한 패키지(예: `events`)만 외부에 공개되며, 나머지 하위 패키지는 내부 구현입니다.
 - 모듈 간 순환 의존과 다른 모듈의 내부 구현 참조를 금지합니다.
 - 의존 대상을 제한할 때는 모듈의 `package-info.java`에
   `@ApplicationModule(allowedDependencies = {"허용할 모듈 이름"})`을 선언합니다.
